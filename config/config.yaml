@@ -1,0 +1,52 @@
+# NFL Analytics Configuration
+# Copy this file to config/secrets.yaml and fill in your actual credentials
+
+# ESPN API Configuration
+espn:
+  league_id: 537814  # Your league ID from the existing draft wizard
+  year: 2025
+  swid: "YOUR_SWID_HERE"  # Replace with your SWID from ESPN cookies
+  espn_s2: "YOUR_ESPN_S2_HERE"  # Replace with your espn_s2 from ESPN cookies
+
+# Database Configuration
+database:
+  path: "data/nfl_analytics.duckdb"
+  backup_path: "data/backups/"
+  
+# Data Sources
+data_sources:
+  nfl_data_py:
+    enabled: true
+    years: [2023, 2024, 2025]
+    
+# Application Settings
+app:
+  log_level: "INFO"
+  log_file: "logs/nfl_analytics.log"
+  cache_ttl: 3600  # Cache timeout in seconds
+  
+# League Settings
+league:
+  scoring_type: "PPR"  # PPR, HALF_PPR, or STANDARD
+  roster_positions:
+    QB: 1
+    RB: 2
+    WR: 2
+    TE: 1
+    FLEX: 2
+    OP: 1  # Superflex
+    K: 1
+    DST: 1
+    BENCH: 7
+    
+# Analytics Settings
+analytics:
+  stability_windows: [3, 5, 8]  # Weeks for stability calculations
+  projection_method: "weighted"  # simple, weighted, or advanced
+  confidence_threshold: 0.7
+  
+# CLI Settings
+cli:
+  output_format: "table"  # table, json, or csv
+  color_output: true
+  page_size: 10

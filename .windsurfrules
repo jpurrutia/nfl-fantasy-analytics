@@ -1,0 +1,370 @@
+Data Product Description:
+
+# Current Stage: Building MVP
+
+An application that hosts NFL analytical insights using foundational and analytical calculations to provide statistics, forecasts, and projections to the average fantasy user with their ESPN, Yahoo, Fanduel, Draft Kings or other accounts integrated. The application will provide users who are looking for:
+
+- Daily Lineup Suggestions
+- Weekly Lineup Suggestions
+- In-Season Intelligence - Daily, Weekly, Season
+- Yo Soy Draft Wizard
+    - currently exists
+- …..
+
+## Customer:
+
+- MVP: me
+- Scale: many users
+
+User Interaction:
+
+@agent → MVP will be CLI application for better develop experience. Second stage will contain UI, but generate the stated front-end UI files mentioned in App flow section for me to view the design concept. Later Stage: Discord Agent
+
+## Tools:
+
+- Draft Assistant → Agent
+- In-Season BI/EDA
+- Lineup Insights (MVP → time-series based forecasting)
+
+## App flow:
+
+- Front-end style:
+    - Minimalist - Japanese video game modern ux design.
+    - @agent → Ask for more feedback here to add to context. Ask gap identifying questions in design context and I will respond—you will then update context.
+    
+- Pages (@agent - for MVP. DO NOT generate pages other than index)
+    - index to introduce project and product
+    - Non-user specific league home dashboard with BI (available to all users)
+        - daily top performers
+        - weekly top performers
+    - User specific league dashboard integrated with ESPN fantasy account
+    - Integrated Team Page (only available to specific user type = ‘SUB’) → Auth, etc.
+
+@agent it’s important that when we generate the data model and the code to ingest, process/transform, or read/write any data, that we do it step by step to allow the developer to review and improve gradually. think hard
+
+## Data Sources (MVP):
+
+### Phase 0: Platform Integration
+
+| Table  | Source |
+| --- | --- |
+| `user_leagues`  | ESPN (MVP) |
+| `player_mapping`  | build mapping file |
+
+### Phase 1: Core Data
+
+| Table | Source |
+| --- | --- |
+| `players` | nfl_data_py |
+| `player_performance`  | nfl_data_py |
+| `player_opportunity` | nfl_data_py |
+
+### Phase 2: Analytics
+
+| Table | Source |
+| --- | --- |
+| `stability_metrics` | phase 1 tables |
+| projection_simple | Phase 1 tables |
+
+### Phase 3: Application Features
+
+| Table | Source |
+| --- | --- |
+| `lineup_recommendations` | Algorithm using all above |
+| `weekly_insights`  | analysis of trends |
+
+## Data Model:
+
+### Essential Tables + Data Sources
+
+### 1. **Platform Integration Layer**
+
+`user_leagues
+- league_id (PK)
+- platform 
+- user_id
+- scoring_settings (JSON)
+- roster_requirements (JSON)
+SOURCE: ESPN/Yahoo/etc APIs via user OAuth
+
+player_mapping  
+- universal_player_id (PK)
+- platform
+- platform_player_id
+- player_name_variant
+SOURCE: Manual mapping file + fuzzy matching logic`
+
+### 2. **Core Fantasy Model**
+
+`players
+- player_id (PK)
+- name
+- position
+- team
+- status (active|injured|IR)
+SOURCE: nfl_data_py.import_rosters()
+
+player_performance
+- player_id (FK)
+- week
+- season
+- passing_yards, passing_tds
+- rushing_yards, rushing_tds  
+- receptions, receiving_yards, receiving_tds
+- fantasy_points_standard
+- fantasy_points_ppr
+SOURCE: nfl_data_py.import_weekly_data()
+
+player_opportunity
+- player_id (FK)
+- week
+- season
+- snap_count, snap_pct
+- targets, target_share
+- carries, carry_share
+- rz_touches, rz_share
+SOURCE: nfl_data_py.import_snap_counts() + aggregate from pbp`
+
+### 3. **Analytics Tables** (Book techniques)
+
+`stability_metrics (Chapter 2)` (I’m going to have to provide extensive feedback here during development)
+`- player_id (FK)
+- metric_type (yards|tds|targets|fantasy_points)
+- week_window (3|5|8)
+- correlation_score
+- coefficient_variation
+- trend_direction
+SOURCE: Calculate from player_performance table
+
+efficiency_metrics (Chapters 3-5)` (I’m going to have to provide extensive feedback here during development)
+`- player_id (FK)
+- week
+- season
+- ryoe (NULL for non-RB)
+- cpoe (NULL for non-QB)
+- yac_over_expected
+- opportunities_vs_expected
+SOURCE: Calculate from nfl_data_py.import_pbp_data()
+
+projections_simple (Chapter 6 simplified)` (I’m going to have to provide extensive feedback here during development)
+`- player_id (FK)
+- week
+- season
+- base_projection (simple average)
+- stable_projection (stability-weighted)
+- floor_ceiling (20th/80th percentile)
+SOURCE: Calculate from player_performance + stability_metrics`
+
+### 4. **Application Layer**
+
+`lineup_recommendations
+- recommendation_id (PK)
+- user_id
+- league_id  
+- week
+- slot (QB|RB1|RB2|WR1|WR2|FLEX|OP)
+- recommended_player_id
+- projected_points
+- confidence
+SOURCE: Algorithm output using projections_simple + roster_requirements
+
+weekly_insights
+- insight_id (PK)
+- player_id
+- week
+- insight_type (buy_low|sell_high|hold)
+- metric_value (actual vs expected diff)
+- confidence_score
+SOURCE: Calculate from efficiency_metrics + recent performance`
+
+## Infrastructure:
+
+MVP = Simple, light weight data application. 
+
+Principles: KISS, DRY, SOLID YAGNI.
+
+Python - help me generate ingestion pipelines and things to get data via python where needed
+
+python uses:
+
+phase 1 : data foundation
+
+- pull data from nfl_data_py
+- connect to ESPN API (extend existing connector)
+- draft-wizard-adp (THIS already exists @agent - CONTEXT)
+- should I do data quality checks here or SQL?
+- load raw data to duckdb and s3 in the future
+
+phase 2: analytics engine (should this be python or SQL)
+
+- stability calculations (I’m going to have to provide extensive feedback here during development)
+- RYOE/CPOE model building (I’m going to have to provide extensive feedback here during development)
+- Statistical calculations (correlation, variance) (I’m going to have to provide extensive feedback here during development)
+- projection algorithms (I’m going to have to provide extensive feedback here during development)
+
+phase 3 application logic:
+
+- lineup optimization logic
+- trade/waiver recommendations
+- schedule/orchestration (prefect or airflow - whatever is more lightweight and reliable)
+- API endpoints (FastAPI)
+
+```markdown
+# Python Rules
+
+This rule applies to all Python files in the project.
+
+## File Pattern
+*.py
+
+## Description
+When working with Python files, we use `uv` as our package manager and runtime. Python files should be executed using the command `uv run {file}`.
+
+## Formatting
+- Use 4 spaces for indentation
+- Follow PEP 8 style guide
+- Use Ruff for code formatting and linting
+- Format on save
+- Use Ruff's recommended settings:
+  - Line length: 88
+  - Quote style: double quotes
+  - Import sorting: isort style
+
+## Commands
+- Run Python file: `uv run {file}`
+- Install dependencies: `uv pip install -r requirements.txt`
+- Format code: `ruff format {file}`
+- Lint code: `ruff check {file}`
+- Fix linting issues: `ruff check --fix {file}`
+
+## Best Practices
+- Use type hints where appropriate
+- Include docstrings for functions and classes
+- Use virtual environments for dependency management
+- Follow PEP 8 naming conventions
+- Use meaningful variable and function names
+- Keep functions focused and single-purpose
+- Use Ruff's auto-fix capabilities to maintain code quality 
+```
+
+SQL (DuckDB) - I want this to be more interactive and you give me leetcode style prompts to write these queries for practice myself
+
+SQL (DuckDB) uses:
+
+phase 1 : data foundation
+
+- Create table schemas (bronze/silver/gold layers)
+- Data type definitions
+- Primary/foreign key constrainsts
+- Initial views for common queries
+- Should I do data quality here or python?
+
+phase 2: analytics engine
+
+- calculate aggregations (player stats by week)
+- window functions for rolling averages
+- joins between opportunity and performance data
+- create analytics views
+
+phase 3 application logic:
+
+- complex queries for lineup optimization
+- historical performance lookups
+- matchup analysis queries
+- user-specific data filtering
+
+SQL Rules:
+
+```markdown
+# SQL Rules
+
+This rule applies to all SQL files in the project.
+
+## File Pattern
+*.sql
+
+## Description
+When working with SQL files, we use DuckDB as our database engine. SQL files should be executed using the command `duckdb local.db -f {file}`.
+
+## Formatting
+- Use 4 spaces for indentation
+- Use SQLFluff for formatting with DuckDB dialect
+- Format on save
+
+## Commands
+- Run SQL file: `duckdb local.db -f {file}`
+
+## Best Practices
+- Use consistent naming conventions
+- Include comments for complex queries
+- Use proper indentation for readability
+- Follow DuckDB's SQL dialect specifications 
+```
+
+**YAML/JSON**
+
+- Configuration files (API keys, league IDs)
+- Data source mappings
+- Schema definitions
+
+### Stage 4: User Interface 
+
+**Python**
+
+- Streamlit for quick dashboard (if choosing Python UI)
+- Data serialization for API responses
+- Session management
+
+**JavaScript/TypeScript** (Optional path)
+
+- React frontend (if going web app)
+- Data visualization (charts/tables)
+- User interaction handling
+
+**HTML/CSS** (Minimal)
+
+- Basic styling for Streamlit
+- Email templates for alerts
+
+### Stage 5: Production/Deployment
+
+**Python**
+
+- Automated testing
+- Error handling/logging
+- Performance monitoring
+
+**Bash/Shell**
+
+- Deployment scripts
+- Backup procedures
+- Cron job setup
+
+**Docker** (Optional)
+
+- Containerization
+- Environment consistency
+
+## Decision
+
+**UI Approach** determines language mix:
+
+**Option A: Python-Only (Streamlit)**
+
+- Faster MVP delivery
+- Single language stack
+- Limited UI flexibility
+
+**Option B: Separate Frontend (React)**
+
+- Better user experience
+- More development time
+- Requires API layer
+
+## Recommended MVP Path
+
+1. **Python + SQL only** for first version
+2. **Streamlit** for quick UI
+3. **Add JavaScript** only if/when needed post-MVP
+
+

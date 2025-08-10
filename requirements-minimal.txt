@@ -1,0 +1,18 @@
+# Core dependencies - Minimal versions for compatibility
+pandas>=2.1.0          # Need 2.1+ for certain features
+requests>=2.31.0       # Stable HTTP library
+duckdb>=1.0.0          # 1.0+ for stable API
+nfl-data-py>=0.3.0     # Latest major version
+pyyaml>=6.0            # YAML parsing
+python-dotenv>=1.0.0   # Environment management
+click>=8.0             # CLI framework
+rich>=13.0             # Terminal UI
+numpy>=1.24.0          # NumPy for calculations
+scipy>=1.11.0          # Scientific computing
+
+# Development dependencies
+pytest>=7.4.0          # Testing framework
+pytest-cov>=4.1.0      # Test coverage
+ruff>=0.1.0            # Fast Python linter
+sqlfluff>=2.3.0        # SQL linter
+ipython>=8.14.0        # Interactive Python
