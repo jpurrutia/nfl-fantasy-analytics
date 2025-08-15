@@ -1,0 +1,57 @@
+{
+  "timestamp": "2025-08-15 03:09:04",
+  "league_info": {
+    "name": "Weenieless Wanderers",
+    "league_id": 537814,
+    "year": 2025,
+    "league_config_available": true,
+    "scoring_type": "PPR",
+    "has_qb_flex": true,
+    "eligible_positions": [
+      "D/ST",
+      "K",
+      "QB",
+      "RB",
+      "TE",
+      "WR"
+    ]
+  },
+  "draft_progress": {
+    "current_pick": 1,
+    "drafted_players": [],
+    "my_team": []
+  },
+  "roster_state": {
+    "roster": {
+      "QB": null,
+      "RB1": null,
+      "RB2": null,
+      "WR1": null,
+      "WR2": null,
+      "TE": null,
+      "FLEX1": null,
+      "FLEX2": null,
+      "OP": null,
+      "K": null,
+      "D/ST": null,
+      "BENCH1": null,
+      "BENCH2": null,
+      "BENCH3": null,
+      "BENCH4": null,
+      "BENCH5": null,
+      "BENCH6": null,
+      "BENCH7": null
+    },
+    "roster_config": {
+      "QB": 1,
+      "RB": 2,
+      "WR": 2,
+      "TE": 1,
+      "K": 1,
+      "D/ST": 1,
+      "BENCH": 7,
+      "OP": 1,
+      "FLEX": 2
+    }
+  }
+}

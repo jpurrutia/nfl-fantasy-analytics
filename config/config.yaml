@@ -5,8 +5,8 @@
 espn:
   league_id: 537814  # Your league ID from the existing draft wizard
   year: 2025
-  swid: "YOUR_SWID_HERE"  # Replace with your SWID from ESPN cookies
-  espn_s2: "YOUR_ESPN_S2_HERE"  # Replace with your espn_s2 from ESPN cookies
+  swid: "3C010FF1-0860-485F-BF82-17FC9D702287"  # Replace with your SWID from ESPN cookies
+  espn_s2: "AECcLkXSS9TWmoGCbPewGJZMFuTRHRMfGyo7XiT2ssZGiJQGBeOxJGPK5HaqUvwu4jN%2F7kTGka1bbIdFv2FJhs0z%2FAimQ3Vg3w2GY49Ogr7V7JpB6r57B8Yx28oSFPnCk0Xi1EZUW2dlIFG%2FWbjNSplXUOjjFn%2F3pmpACqetH3g1zOe4YchwxSYNg2%2B2CPiyLshnpgm2wZ1PRRFkddMF8%2Fuu%2FowBXjAYWctsI1SUyrCVu%2BJQgpDvQtmlAkRZwCfp26rHz96YQwOtVvrsnM1MJMG8Z5LYZDu9WAnRcP9PgTuUhsTuYl81GcWvxH99tTXx0Dk%3D"  # Replace with your espn_s2 from ESPN cookies
 
 # Database Configuration
 database:

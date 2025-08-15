@@ -2,12 +2,12 @@
 ESPN Fantasy Football API Connector
 
 Extracted and refactored from the existing draft wizard for reusability
-across the NFL Analytics platform.
+across the NFL Analytics platform. Enhanced with league configuration detection.
 """
 
 import requests
 import json
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Set
 from dataclasses import dataclass
 from datetime import datetime
 import logging
@@ -17,14 +17,65 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class LeagueSettings:
-    """ESPN League Settings"""
+    """ESPN League Settings with enhanced detection"""
     name: str
     season: int
     current_week: int
     num_teams: int
     roster_slots: Dict[str, int]
-    is_superflex: bool
+    flex_positions: Dict[str, Set[str]]  # Flex position types and eligible positions
     scoring_type: str
+    scoring_details: Dict[str, float]  # Detailed scoring settings
+    
+    @property
+    def is_superflex(self) -> bool:
+        """Check if league has superflex (OP) position."""
+        return "OP" in self.roster_slots
+    
+    @property
+    def has_qb_flex(self) -> bool:
+        """Check if QBs can be played in flex positions."""
+        return any("QB" in eligible for eligible in self.flex_positions.values())
+    
+    @property
+    def has_kickers(self) -> bool:
+        """Check if league uses kickers."""
+        return self.roster_slots.get("K", 0) > 0
+    
+    @property
+    def has_defense(self) -> bool:
+        """Check if league uses defense."""
+        return self.roster_slots.get("D/ST", 0) > 0 or self.roster_slots.get("DST", 0) > 0
+    
+    @property
+    def total_qb_slots(self) -> int:
+        """Calculate total QB slots including flex."""
+        base_qb = self.roster_slots.get("QB", 0)
+        flex_qb = sum(
+            count for pos, eligible in self.flex_positions.items()
+            if "QB" in eligible
+            for count in [self.roster_slots.get(pos, 0)]
+        )
+        return base_qb + flex_qb
+    
+    def to_league_config_dict(self) -> Dict[str, Any]:
+        """Convert to format compatible with LeagueConfig."""
+        return {
+            "league_id": "espn_detected",
+            "league_name": self.name,
+            "league_size": self.num_teams,
+            "scoring_type": self.scoring_type,
+            "roster_positions": self.roster_slots,
+            "flex_positions": [
+                {
+                    "name": pos_name,
+                    "eligible_positions": list(eligible)
+                }
+                for pos_name, eligible in self.flex_positions.items()
+            ],
+            "auto_detected": True,
+            "detection_source": "espn_api"
+        }
 
 
 @dataclass
@@ -57,6 +108,18 @@ class ESPNConnector:
         20: "BENCH",
         21: "OP",
         23: "FLEX",
+        24: "SUPERFLEX",  # Alternative superflex designation
+        25: "WR_TE",     # WR/TE flex
+        26: "RB_WR",     # RB/WR flex
+    }
+    
+    # Define flex position eligibility
+    FLEX_ELIGIBILITY = {
+        "FLEX": {"RB", "WR", "TE"},
+        "SUPERFLEX": {"QB", "RB", "WR", "TE"},
+        "OP": {"QB", "RB", "WR", "TE"},
+        "WR_TE": {"WR", "TE"},
+        "RB_WR": {"RB", "WR"},
     }
     
     def __init__(self, league_id: int, year: int, swid: str = None, espn_s2: str = None):
@@ -92,7 +155,7 @@ class ESPNConnector:
     
     def get_league_settings(self) -> Optional[LeagueSettings]:
         """
-        Get comprehensive league settings
+        Get comprehensive league settings with enhanced flex detection
         
         Returns:
             LeagueSettings object or None if request fails
@@ -108,28 +171,53 @@ class ESPNConnector:
             data = response.json()
             settings = data.get("settings", {})
             
-            # Parse roster slots
+            # Parse roster slots and flex positions
             roster_slots = {}
+            flex_positions = {}
+            
             if "rosterSettings" in settings:
                 lineup = settings["rosterSettings"].get("lineupSlotCounts", {})
                 for slot_id, count in lineup.items():
                     position = self.SLOT_MAP.get(int(slot_id))
                     if position and count > 0:
                         roster_slots[position] = count
+                        
+                        # Check if this is a flex position
+                        if position in self.FLEX_ELIGIBILITY:
+                            flex_positions[position] = self.FLEX_ELIGIBILITY[position]
             else:
                 roster_slots = self._get_default_roster()
+                flex_positions = self._get_default_flex()
             
-            # Determine scoring type
+            # Parse detailed scoring settings
+            scoring_details = {}
             scoring_type = "STANDARD"
+            
             if "scoringSettings" in settings:
                 scoring_items = settings["scoringSettings"].get("scoringItems", [])
                 for item in scoring_items:
-                    if item.get("statId") == 53:  # Receptions
-                        points = item.get("pointsOverrides", {}).get("16", 0)
+                    stat_id = item.get("statId")
+                    points = item.get("pointsOverrides", {}).get("16", item.get("points", 0))
+                    
+                    # Map important scoring stats
+                    if stat_id == 53:  # Receptions
+                        scoring_details["receptions"] = points
                         if points == 1.0:
                             scoring_type = "PPR"
                         elif points == 0.5:
                             scoring_type = "HALF_PPR"
+                    elif stat_id == 42:  # Passing yards
+                        scoring_details["passing_yards"] = points
+                    elif stat_id == 43:  # Passing TDs
+                        scoring_details["passing_tds"] = points
+                    elif stat_id == 24:  # Rushing yards
+                        scoring_details["rushing_yards"] = points
+                    elif stat_id == 25:  # Rushing TDs
+                        scoring_details["rushing_tds"] = points
+                    elif stat_id == 44:  # Receiving yards
+                        scoring_details["receiving_yards"] = points
+                    elif stat_id == 45:  # Receiving TDs
+                        scoring_details["receiving_tds"] = points
             
             return LeagueSettings(
                 name=settings.get("name", f"League {self.league_id}"),
@@ -137,8 +225,9 @@ class ESPNConnector:
                 current_week=data.get("scoringPeriodId", 1),
                 num_teams=settings.get("size", 10),
                 roster_slots=roster_slots,
-                is_superflex=roster_slots.get("OP", 0) > 0,
-                scoring_type=scoring_type
+                flex_positions=flex_positions,
+                scoring_type=scoring_type,
+                scoring_details=scoring_details
             )
             
         except Exception as e:
@@ -247,22 +336,29 @@ class ESPNConnector:
             current_week=1,
             num_teams=10,
             roster_slots=self._get_default_roster(),
-            is_superflex=True,
-            scoring_type="STANDARD"
+            flex_positions=self._get_default_flex(),
+            scoring_type="PPR",
+            scoring_details={"receptions": 1.0, "passing_yards": 0.04, "rushing_yards": 0.1}
         )
     
     def _get_default_roster(self) -> Dict[str, int]:
-        """Return default superflex roster configuration"""
+        """Return default roster configuration (your league format)"""
         return {
             "QB": 1,
             "RB": 2,
             "WR": 2,
             "TE": 1,
-            "FLEX": 2,
-            "OP": 1,
-            "K": 1,
+            "FLEX": 2,  # Traditional flex
+            "OP": 1,    # QB-eligible flex
             "D/ST": 1,
             "BENCH": 7,
+        }
+    
+    def _get_default_flex(self) -> Dict[str, Set[str]]:
+        """Return default flex position eligibility"""
+        return {
+            "FLEX": {"RB", "WR", "TE"},
+            "OP": {"QB", "RB", "WR", "TE"}
         }
     
     def _map_position(self, position_id: int) -> str:
@@ -325,9 +421,46 @@ class ESPNConnector:
             if settings:
                 logger.info(f"✓ Connected to league: {settings.name}")
                 logger.info(f"✓ Season: {settings.season}, Week: {settings.current_week}")
-                logger.info(f"✓ Teams: {settings.num_teams}, Superflex: {settings.is_superflex}")
+                logger.info(f"✓ Teams: {settings.num_teams}")
+                logger.info(f"✓ Scoring: {settings.scoring_type}")
+                logger.info(f"✓ QB-Flex: {settings.has_qb_flex}")
+                logger.info(f"✓ Kickers: {settings.has_kickers}")
+                logger.info(f"✓ Defense: {settings.has_defense}")
+                logger.info(f"✓ QB Slots: {settings.total_qb_slots}")
                 return True
             return False
         except Exception as e:
             logger.error(f"Connection test failed: {e}")
             return False
+    
+    def detect_league_configuration(self) -> Optional[Dict[str, Any]]:
+        """
+        Detect complete league configuration for analytics integration.
+        
+        Returns:
+            Dictionary compatible with LeagueConfig.from_dict()
+        """
+        try:
+            settings = self.get_league_settings()
+            if not settings:
+                logger.error("Failed to detect league settings")
+                return None
+            
+            # Convert to league config format
+            config_dict = settings.to_league_config_dict()
+            config_dict["league_id"] = str(self.league_id)
+            
+            logger.info(f"🏈 Detected league: {settings.name}")
+            logger.info(f"📊 Format: {settings.scoring_type}, {settings.num_teams} teams")
+            logger.info(f"🎯 Positions: {', '.join(sorted(settings.roster_slots.keys()))}")
+            
+            if settings.has_qb_flex:
+                logger.info(f"⚡ QB-Flex league detected (OP/SUPERFLEX)")
+            if not settings.has_kickers:
+                logger.info(f"🚫 No kickers detected")
+            
+            return config_dict
+            
+        except Exception as e:
+            logger.error(f"League configuration detection failed: {e}")
+            return None

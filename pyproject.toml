@@ -24,6 +24,7 @@ dev = [
     "ruff>=0.1.0",
     "sqlfluff>=2.3.0",
     "ipython>=8.14.0",
+    "pre-commit>=3.5.0",
 ]
 web = [
     "streamlit>=1.28.0",
