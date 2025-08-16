@@ -485,5 +485,66 @@ def draft(league_id: str):
         click.echo(f"❌ Failed to start draft tool: {e}", err=True)
         sys.exit(1)
 
+@cli.command('sync-league')
+@click.option('--league-id', type=int, help='ESPN League ID to sync')
+@click.option('--year', type=int, default=2025, help='Season year')
+@click.option('--show-summary', is_flag=True, help='Show league summary after sync')
+def sync_league(league_id: int, year: int, show_summary: bool):
+    """Sync ESPN league data including teams, managers, and rosters."""
+    
+    try:
+        from src.ingestion.espn_league_sync import ESPNLeagueSync
+        
+        # Get league ID from config if not provided
+        if not league_id:
+            import yaml
+            with open('config/config.yaml') as f:
+                config = yaml.safe_load(f)
+            league_id = config.get('espn', {}).get('league_id')
+            
+        if not league_id:
+            click.echo("❌ No league ID provided or found in config")
+            sys.exit(1)
+        
+        click.echo(f"🔄 Syncing ESPN league {league_id} for {year} season...")
+        
+        # Initialize and run sync
+        sync = ESPNLeagueSync()
+        result = sync.sync_league(league_id, year)
+        
+        if "error" in result:
+            click.echo(f"❌ Sync failed: {result['error']}")
+            sys.exit(1)
+        
+        # Show results
+        click.echo("✅ League sync complete!")
+        click.echo(f"  • League: {result['league_name']}")
+        click.echo(f"  • Teams synced: {result['teams_synced']}")
+        click.echo(f"  • Players on rosters: {result['players_on_rosters']}")
+        
+        if show_summary:
+            click.echo("\n📊 League Summary:")
+            click.echo("-" * 50)
+            summary = sync.get_league_summary(league_id)
+            click.echo(summary.to_string())
+            
+            # Show any duplicate players
+            click.echo("\n🔄 Players on Multiple Rosters:")
+            dupes = sync.get_roster_analysis(league_id)
+            if not dupes.empty:
+                click.echo(dupes.to_string())
+            else:
+                click.echo("  No duplicate players found")
+        
+        click.echo(f"\n💾 Data stored in database: data/nfl_analytics.duckdb")
+        
+    except ImportError as e:
+        click.echo(f"❌ Import error: {e}")
+        click.echo("Make sure ESPN connector is properly configured")
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"❌ Sync failed: {e}", err=True)
+        sys.exit(1)
+
 if __name__ == "__main__":
     cli()
