@@ -43,7 +43,8 @@ def cli():
 @cli.command()
 @click.option('--year', '-y', type=int, default=2024, help='Year to ingest data for')
 @click.option('--historical', is_flag=True, help='Include previous year for historical analysis')
-def ingest(year: int, historical: bool):
+@click.option('--pbp', is_flag=True, help='Also load play-by-play data (slower)')
+def ingest(year: int, historical: bool, pbp: bool):
     """Ingest NFL data from nfl-data-py into bronze tables."""
     
     years = [year]
@@ -63,6 +64,12 @@ def ingest(year: int, historical: bool):
         perf_count = ingestion.load_player_performance(years)
         click.echo(f"✅ Loaded {perf_count} performance records")
         
+        # Load play-by-play data if requested
+        if pbp:
+            click.echo("📊 Loading play-by-play data (this may take a few minutes)...")
+            pbp_count = ingestion.load_play_by_play(years)
+            click.echo(f"✅ Loaded {pbp_count:,} plays")
+        
         # Validate
         validation_results = ingestion.validate_data()
         click.echo(f"✅ Validation complete - {validation_results['latest_data']}")
@@ -71,6 +78,30 @@ def ingest(year: int, historical: bool):
         
     except Exception as e:
         click.echo(f"❌ Ingestion failed: {e}", err=True)
+        sys.exit(1)
+
+@cli.command('ingest-pbp')
+@click.option('--years', '-y', multiple=True, type=int, default=[2021, 2022, 2023, 2024], 
+              help='Years to load (default: 2021-2024)')
+def ingest_pbp(years):
+    """Load play-by-play data for exploratory analysis."""
+    
+    click.echo(f"🏈 Loading play-by-play data for seasons: {list(years)}")
+    click.echo("⏳ This will take several minutes per season...")
+    
+    try:
+        ingestion = NFLDataIngestion()
+        
+        # Load play-by-play data
+        total_count = ingestion.load_play_by_play(list(years))
+        
+        click.echo(f"✅ Successfully loaded {total_count:,} plays")
+        click.echo("\n💡 You can now explore the data with:")
+        click.echo("   duckdb data/nfl_analytics.duckdb -ui")
+        click.echo("   SELECT * FROM bronze.nfl_play_by_play LIMIT 10;")
+        
+    except Exception as e:
+        click.echo(f"❌ Play-by-play ingestion failed: {e}", err=True)
         sys.exit(1)
 
 @cli.command()

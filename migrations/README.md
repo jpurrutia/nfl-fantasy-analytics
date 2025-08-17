@@ -29,6 +29,7 @@ uv run python -m src.cli.main migrate --rollback
 |---------|------------|------|--------|
 | 001 | Initial schema documentation | 2025-08-11 | Pending |
 | 002 | Rename tables with source prefixes | 2025-08-11 | Pending |
+| 003 | Add NGS and snap tables, restructure opportunity to silver | 2025-08-17 | Pending |
 
 ## Future: dbt Integration
 
