@@ -1,0 +1,59 @@
+auto_detected: true
+detection_source: espn_api
+flex_positions:
+- eligible_positions:
+  - TE
+  - RB
+  - WR
+  - QB
+  name: OP
+- eligible_positions:
+  - TE
+  - RB
+  - WR
+  name: FLEX
+league_id: '537814'
+league_name: Weenieless Wanderers
+league_size: 10
+min_games: 8
+position_thresholds:
+  D/ST:
+    boom: 20.0
+    bust: 5.0
+    startable: 10.0
+  K:
+    boom: 12.0
+    bust: 2.0
+    startable: 5.0
+  QB:
+    boom: 25.0
+    bust: 10.0
+    startable: 15.0
+  RB:
+    boom: 20.0
+    bust: 5.0
+    startable: 10.0
+  TE:
+    boom: 15.0
+    bust: 3.0
+    startable: 8.0
+  WR:
+    boom: 20.0
+    bust: 5.0
+    startable: 10.0
+projection_method: weighted
+roster_positions:
+  BENCH: 7
+  D/ST: 1
+  FLEX: 2
+  K: 1
+  OP: 1
+  QB: 1
+  RB: 2
+  TE: 1
+  WR: 2
+scoring_type: PPR
+stability_windows:
+- 3
+- 5
+- 8
